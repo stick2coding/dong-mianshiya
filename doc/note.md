@@ -29,12 +29,4 @@ git rm --cached .
 
 使用nvm 来管理node.js版本
 
-这里提到了前端的渲染模式
-客户端渲染(返回html页面加js脚本，然后浏览器执行脚本逐步完成渲染)
-服务端渲染（由服务器端生成完整html）
-静态渲染（博客）
 
-
-快速构建前端工程（这里使用了next.js）
-具体参考官方文档
-https://nextjs.org/docs/app/getting-started/installation#automatic-installation
