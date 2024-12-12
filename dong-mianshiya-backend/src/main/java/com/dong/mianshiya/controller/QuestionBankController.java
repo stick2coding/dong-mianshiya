@@ -148,7 +148,7 @@ public class QuestionBankController {
         // 获取封装类
         QuestionBankVO questionBankVO = questionBankService.getQuestionBankVO(questionBank, request);
         //是否查询题目
-        Boolean needQueryQuestion = questionBankQueryRequest.isNeedQuestion();
+        Boolean needQueryQuestion = questionBankQueryRequest.isNeedQueryQuestionList();
         if (needQueryQuestion){
             QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
             questionQueryRequest.setQuestionBankId(id);
@@ -188,7 +188,7 @@ public class QuestionBankController {
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(size > 300, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
                 questionBankService.getQueryWrapper(questionBankQueryRequest));
@@ -213,7 +213,7 @@ public class QuestionBankController {
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(size > 300, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
                 questionBankService.getQueryWrapper(questionBankQueryRequest));
