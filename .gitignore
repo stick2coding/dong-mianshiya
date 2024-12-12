@@ -3,6 +3,7 @@
 target
 .temp
 node_modules
+.next
 
 ### Java template
 # Compiled class file
