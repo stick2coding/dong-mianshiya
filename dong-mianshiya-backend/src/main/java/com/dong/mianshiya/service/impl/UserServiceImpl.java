@@ -1,12 +1,11 @@
 package com.dong.mianshiya.service.impl;
 
-import static com.dong.mianshiya.constant.UserConstant.USER_LOGIN_STATE;
-
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dong.mianshiya.common.ErrorCode;
 import com.dong.mianshiya.constant.CommonConstant;
+import com.dong.mianshiya.constant.RedisConstant;
 import com.dong.mianshiya.exception.BusinessException;
 import com.dong.mianshiya.mapper.UserMapper;
 import com.dong.mianshiya.model.dto.user.UserQueryRequest;
@@ -16,15 +15,21 @@ import com.dong.mianshiya.model.vo.LoginUserVO;
 import com.dong.mianshiya.model.vo.UserVO;
 import com.dong.mianshiya.service.UserService;
 import com.dong.mianshiya.utils.SqlUtils;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.api.RBitSet;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
+import java.time.Year;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.dong.mianshiya.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 用户服务实现
@@ -40,6 +45,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 盐值，混淆密码
      */
     public static final String SALT = "yupi";
+    private final RedissonClient redissonClient;
+
+    public UserServiceImpl(RedissonClient redissonClient) {
+        this.redissonClient = redissonClient;
+    }
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -234,4 +244,142 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 sortField);
         return queryWrapper;
     }
+
+    @Override
+    public boolean addUserSignIn(long userId) {
+        //获取当前时间
+        LocalDate now = LocalDate.now();
+        String key = RedisConstant.getUserSignInKey(userId, now.getYear());
+        RBitSet signInBitSet = redissonClient.getBitSet(key);
+        //获取当前日期是一年的第几天
+        int offset = now.getDayOfYear();
+        //先检测是否已经签到
+        if(signInBitSet.get(offset)){
+           return true;
+        }
+        boolean result = signInBitSet.set(offset, true);
+        return result;
+    }
+
+    @Override
+    public Map<LocalDate, Boolean> getUserSignInRecord(long userId, Integer year) {
+        if (year == null){
+            LocalDate now = LocalDate.now();
+            year = now.getYear();
+        }
+        String key = RedisConstant.getUserSignInKey(userId, year);
+        RBitSet signInBitSet = redissonClient.getBitSet(key);
+        //定义一个map，组装前端可用的数据（这里用链表，是为了按照可以按照时间顺序逐个放入签到）
+        Map<LocalDate, Boolean> signInRecordMap = new LinkedHashMap<>();
+        signInRecordMap = getRecordsV1(signInBitSet, year);
+
+        return signInRecordMap;
+    }
+
+    /**
+     * 快速获取签到记录
+     * @param userId
+     * @param year
+     * @return
+     */
+    @Override
+    public List<Integer> getUserSignInRecordFast(long userId, Integer year) {
+        if (year == null){
+            LocalDate now = LocalDate.now();
+            year = now.getYear();
+        }
+        String key = RedisConstant.getUserSignInKey(userId, year);
+        RBitSet signInBitSet = redissonClient.getBitSet(key);
+
+        return getRecordsV3(signInBitSet, year);
+    }
+
+    private Map<LocalDate, Boolean> getRecords(RBitSet signInBitSet, Integer year) {
+        Map<LocalDate, Boolean> signInRecordMap = new LinkedHashMap<>();
+        // 获取当前年的总天数
+        int totalDays = Year.of(year).length();
+        // 循环依次获取每天的签到状态
+        for (int dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+            System.out.println(dayIndex);
+            // 获取dayIndex所在的时间
+            LocalDate currentDate = LocalDate.ofYearDay(year, dayIndex);
+            // 获取当天是否有签到
+            boolean isSignedIn = signInBitSet.get(dayIndex);
+            signInRecordMap.put(currentDate, isSignedIn);
+        }
+        return signInRecordMap;
+    }
+
+    /**
+     * 将 signInBitSet 的数据在本地缓存一份，避免在循环中每次都再向redis发请求
+     * @param signInBitSet
+     * @param year
+     * @return
+     */
+    private Map<LocalDate, Boolean> getRecordsV1(RBitSet signInBitSet, Integer year) {
+        Map<LocalDate, Boolean> signInRecordMap = new LinkedHashMap<>();
+         BitSet signInLocalBitSet = signInBitSet.asBitSet();
+        // 获取当前年的总天数
+        int totalDays = Year.of(year).length();
+        // 循环依次获取每天的签到状态
+        for (int dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+            // 获取dayIndex所在的时间
+            LocalDate currentDate = LocalDate.ofYearDay(year, dayIndex);
+            // 获取当天是否有签到
+            boolean isSignedIn = signInLocalBitSet.get(dayIndex);
+            signInRecordMap.put(currentDate, isSignedIn);
+        }
+        return signInRecordMap;
+    }
+
+    /**
+     * 在返回的数据中，可以只返回有签到的数据，减少数据传输
+     * @param signInBitSet
+     * @param year
+     * @return
+     */
+    private Map<LocalDate, Boolean> getRecordsV2(RBitSet signInBitSet, Integer year) {
+        Map<LocalDate, Boolean> signInRecordMap = new LinkedHashMap<>();
+        BitSet signInLocalBitSet = signInBitSet.asBitSet();
+        // 获取当前年的总天数
+        int totalDays = Year.of(year).length();
+        // 循环依次获取每天的签到状态
+        for (int dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+            // 获取dayIndex所在的时间
+            LocalDate currentDate = LocalDate.ofYearDay(year, dayIndex);
+            // 获取当天是否有签到
+            boolean isSignedIn = signInLocalBitSet.get(dayIndex);
+            if (isSignedIn){
+                signInRecordMap.put(currentDate, isSignedIn);
+            }
+        }
+        return signInRecordMap;
+    }
+
+    /**
+     * 优化循环
+     * bitmap为我们提供了更为便捷的查找方法
+     * nextSetBit(fromIndex),意思是从fromIndex开始，找到第一个为1的位置，返回这个位置，如果没有找到，返回-1
+     * nextClearBit(fromIndex),意思是从fromIndex开始，找到第一个为0的位置，返回这个位置，如果没有找到，返回-1
+     * @param signInBitSet
+     * @param year
+     * @return
+     */
+    private List<Integer> getRecordsV3(RBitSet signInBitSet, Integer year) {
+        List<Integer> signInDayList = new ArrayList<>();
+        BitSet signInLocalBitSet = signInBitSet.asBitSet();
+        // 先从0开始找到第一天签到的地方
+        int index = signInLocalBitSet.nextSetBit(0);
+        // 当index >= 0 时，说明有签到，将签到的日期添加到list，并继续查找下一个签到日期
+        while (index >= 0){
+            signInDayList.add(index);
+            index = signInLocalBitSet.nextSetBit(index + 1);
+        }
+
+        return signInDayList;
+    }
+
+
+
+
 }

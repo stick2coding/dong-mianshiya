@@ -6,8 +6,11 @@ import com.dong.mianshiya.model.dto.user.UserQueryRequest;
 import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.vo.LoginUserVO;
 import com.dong.mianshiya.model.vo.UserVO;
-import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 用户服务
@@ -107,5 +110,16 @@ public interface UserService extends IService<User> {
      * @return
      */
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    /**
+     * 添加签到
+     * @param userId
+     * @return
+     */
+    boolean addUserSignIn(long userId);
+
+    Map<LocalDate, Boolean> getUserSignInRecord(long userId, Integer year);
+
+    List<Integer> getUserSignInRecordFast(long userId, Integer year);
 
 }

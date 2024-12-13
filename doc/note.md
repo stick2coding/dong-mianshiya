@@ -29,4 +29,39 @@ git rm --cached .
 
 使用nvm 来管理node.js版本
 
+### ES
+创建索引
+```
+PUT /question_v1
+{
+  "aliases": {
+    "question": {}
+  },
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+查询对应的索引数据
+```
+GET /test_index/_search
+{
+  "query": {
+    "match_all": {}
+  }
+};
+```
 

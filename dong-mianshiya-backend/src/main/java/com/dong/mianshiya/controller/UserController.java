@@ -10,21 +10,10 @@ import com.dong.mianshiya.config.WxOpenConfig;
 import com.dong.mianshiya.constant.UserConstant;
 import com.dong.mianshiya.exception.BusinessException;
 import com.dong.mianshiya.exception.ThrowUtils;
-import com.dong.mianshiya.model.dto.user.UserAddRequest;
-import com.dong.mianshiya.model.dto.user.UserLoginRequest;
-import com.dong.mianshiya.model.dto.user.UserQueryRequest;
-import com.dong.mianshiya.model.dto.user.UserRegisterRequest;
-import com.dong.mianshiya.model.dto.user.UserUpdateMyRequest;
-import com.dong.mianshiya.model.dto.user.UserUpdateRequest;
+import com.dong.mianshiya.model.dto.user.*;
 import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.vo.LoginUserVO;
 import com.dong.mianshiya.model.vo.UserVO;
-
-import java.util.List;
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.dong.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
@@ -33,12 +22,14 @@ import me.chanjar.weixin.mp.api.WxMpService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 import static com.dong.mianshiya.service.impl.UserServiceImpl.SALT;
 
@@ -316,5 +307,38 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 用户签到
+     * @param httpServletRequest
+     * @return
+     */
+    @PostMapping(value = "/add/sign_in")
+    public boolean addUserSignIn(HttpServletRequest httpServletRequest) {
+        //先登录才能签到
+        User loginUser = userService.getLoginUser(httpServletRequest);
+        return userService.addUserSignIn(loginUser.getId());
+    }
+
+    /**
+     * 获取用户签到记录
+     * @param year
+     * @param request
+     * @return
+     */
+    @GetMapping(value = "/get/sign_in")
+    public BaseResponse<Map<LocalDate, Boolean>> getUserSignInRecord(Integer year, HttpServletRequest request){
+        // 先判断登录
+        User loginUser = userService.getLoginUser(request);
+        Map<LocalDate, Boolean> result = userService.getUserSignInRecord(loginUser.getId(), year);
+        return ResultUtils.success(result);
+    }
+
+    @GetMapping(value = "/get/sign_in_v3")
+    public BaseResponse<List<Integer>> getUserSignInRecordFast(Integer year, HttpServletRequest request){
+        // 先判断登录
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(userService.getUserSignInRecordFast(loginUser.getId(), year));
     }
 }
