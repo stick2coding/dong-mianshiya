@@ -327,7 +327,7 @@ public class UserController {
      * @param request
      * @return
      */
-    @GetMapping(value = "/get/sign_in")
+    @GetMapping(value = "/get/sign_in_old")
     public BaseResponse<Map<LocalDate, Boolean>> getUserSignInRecord(Integer year, HttpServletRequest request){
         // 先判断登录
         User loginUser = userService.getLoginUser(request);
@@ -335,7 +335,7 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
-    @GetMapping(value = "/get/sign_in_v3")
+    @GetMapping(value = "/get/sign_in")
     public BaseResponse<List<Integer>> getUserSignInRecordFast(Integer year, HttpServletRequest request){
         // 先判断登录
         User loginUser = userService.getLoginUser(request);

@@ -18,6 +18,7 @@ import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.vo.QuestionVO;
 import com.dong.mianshiya.service.QuestionService;
 import com.dong.mianshiya.service.UserService;
+import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -135,11 +136,26 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+
+        // 生成key
+        String key = "question_" + id;
+        // 判断是否是热key
+        if (JdHotKeyStore.isHotKey(key)){
+            // 是，就从本地获取
+            Object cacheQuestion = JdHotKeyStore.get(key);
+            if (cacheQuestion != null){
+                return ResultUtils.success((QuestionVO) cacheQuestion);
+            }
+        }
+        // 如果不是，就从数据库获取
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类
-        return ResultUtils.success(questionService.getQuestionVO(question, request));
+        QuestionVO questionVO = questionService.getQuestionVO(question, request);
+        // 放入本地缓存（这个方法内部会再次判断key是否是热key,当是热key才会放入内存中）
+        JdHotKeyStore.smartSet(key,questionVO);
+        return ResultUtils.success(questionVO);
     }
 
     /**
@@ -236,6 +252,17 @@ public class QuestionController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+
+    @PostMapping("/search/page/vo")
+    public BaseResponse<Page<QuestionVO>> searchQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
+                                                                 HttpServletRequest request) {
+        long size = questionQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
+        Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
+        return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+    }
+
 
     // endregion
 }

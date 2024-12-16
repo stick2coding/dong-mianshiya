@@ -3,11 +3,14 @@ package com.dong.mianshiya.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.dong.mianshiya.common.BatchResult;
 import com.dong.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
 import com.dong.mianshiya.model.entity.QuestionBankQuestion;
+import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.vo.QuestionBankQuestionVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 题目题库关系服务
@@ -50,4 +53,9 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
      * @return
      */
     Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionBankQuestionPage, HttpServletRequest request);
+
+
+    BatchResult batchAddQuestionBankQuestion(Long questionBankId, List<Long> questionIds, User user);
+
+    void batchAddQuestionsToBankInner(List<QuestionBankQuestion> questionBankQuestions);
 }

@@ -22,6 +22,15 @@ import com.dong.mianshiya.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -47,6 +56,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private QuestionBankQuestionService questionBankQuestionService;
+
+    @Resource
+    private ElasticsearchRestTemplate elasticsearchRestTemplate;
 
     /**
      * 校验数据
@@ -217,6 +229,86 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         //查询数据库
         return this.page(new Page<>(current, size), queryWrapper);
+    }
+
+    @Override
+    public Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest) {
+//        // 构造查询条件
+//        NativeSearchQuery searchQuery = getEsSearchQuery(questionQueryRequest);
+//        // 查询
+//        SearchHits<QuestionEsDTO> searchHits = elasticsearchRestTemplate.search(searchQuery, QuestionEsDTO.class);
+//        // 复用分页对象，封装返回结果
+//        Page<Question> page = new Page<>();
+//        page.setTotal(searchHits.getTotalHits());
+//        List<Question> recordList = new ArrayList<>();
+//        if (searchHits.hasSearchHits()) {
+//            searchHits.getSearchHits().forEach(searchHit -> {
+//                QuestionEsDTO questionEsDTO = searchHit.getContent();
+//                Question question = QuestionEsDTO.dtoToObj(questionEsDTO);
+//                recordList.add(question);
+//            });
+//        }
+//        page.setRecords(recordList);
+//        return page;
+        return null;
+    }
+
+    private NativeSearchQuery getEsSearchQuery(QuestionQueryRequest questionQueryRequest) {
+        // 先获取参数
+        Long id = questionQueryRequest.getId();
+        String title = questionQueryRequest.getTitle();
+        List<String> tags = questionQueryRequest.getTags();
+        String searchText = questionQueryRequest.getSearchText();
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        Long userId = questionQueryRequest.getUserId();
+        // 分页参数
+        int current = questionQueryRequest.getCurrent() - 1;
+        int pageSize = questionQueryRequest.getPageSize();
+        String sortField = questionQueryRequest.getSortField();
+        String sortOrder = questionQueryRequest.getSortOrder();
+
+        // 构建查询条件
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        //添加条件
+        boolQueryBuilder.filter(QueryBuilders.termQuery("isDelete", 0));
+        if (id != null) {
+            boolQueryBuilder.filter(QueryBuilders.termQuery("id", id));
+        }
+        if (userId != null) {
+            boolQueryBuilder.filter(QueryBuilders.termQuery("userId", userId));
+        }
+        if (questionBankId != null) {
+            boolQueryBuilder.filter(QueryBuilders.termQuery("questionBankId", questionBankId));
+        }
+        // 包含所有标签
+        if (CollUtil.isNotEmpty(tags)){
+            for (String tag : tags) {
+                boolQueryBuilder.filter(QueryBuilders.termQuery("tags", tag));
+            }
+        }
+        // 按关键字搜索
+        if (StringUtils.isNotBlank(searchText)) {
+            boolQueryBuilder.should(QueryBuilders.matchQuery("title", searchText));
+            boolQueryBuilder.should(QueryBuilders.matchQuery("answer", searchText));
+            boolQueryBuilder.should(QueryBuilders.matchQuery("content", searchText));
+            boolQueryBuilder.minimumShouldMatch(1);
+        }
+        // 排序
+        SortBuilder<?> sortBuilder = SortBuilders.scoreSort();
+        if (StringUtils.isNotBlank(sortField)) {
+            sortBuilder = SortBuilders.fieldSort(sortField);
+            sortBuilder.order(CommonConstant.SORT_ORDER_ASC.equals(sortOrder) ? SortOrder.ASC : SortOrder.DESC);
+        }
+        // 分页
+        PageRequest pageRequest = PageRequest.of(current, pageSize);
+        // 构造查询
+        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
+                .withQuery(boolQueryBuilder)
+                .withPageable(pageRequest)
+                .withSorts(sortBuilder).
+                build();
+        return searchQuery;
     }
 
 }

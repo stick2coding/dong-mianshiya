@@ -1,7 +1,11 @@
 package com.dong.mianshiya.mapper;
 
-import com.dong.mianshiya.model.entity.Question;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.dong.mianshiya.model.entity.Question;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.Date;
+import java.util.List;
 
 /**
 * @author sunbin
@@ -10,6 +14,14 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 * @Entity com.dong.mianshiya.model.entity.Question
 */
 public interface QuestionMapper extends BaseMapper<Question> {
+
+    /**
+     * 根据更新时间查出列表，用于同步给ES
+     * @param minUpdateTime
+     * @return
+     */
+    @Select("SELECT * FROM question where updateTime >= #{minUpdateTime}")
+    List<Question> listQuestionWithDelete(Date minUpdateTime);
 
 }
 

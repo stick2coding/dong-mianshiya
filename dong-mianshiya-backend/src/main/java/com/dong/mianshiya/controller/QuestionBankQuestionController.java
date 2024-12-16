@@ -3,17 +3,11 @@ package com.dong.mianshiya.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dong.mianshiya.annotation.AuthCheck;
-import com.dong.mianshiya.common.BaseResponse;
-import com.dong.mianshiya.common.DeleteRequest;
-import com.dong.mianshiya.common.ErrorCode;
-import com.dong.mianshiya.common.ResultUtils;
+import com.dong.mianshiya.common.*;
 import com.dong.mianshiya.constant.UserConstant;
 import com.dong.mianshiya.exception.BusinessException;
 import com.dong.mianshiya.exception.ThrowUtils;
-import com.dong.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionAddRequest;
-import com.dong.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
-import com.dong.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionRemoveRequest;
-import com.dong.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionUpdateRequest;
+import com.dong.mianshiya.model.dto.questionbankquestion.*;
 import com.dong.mianshiya.model.entity.QuestionBankQuestion;
 import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.vo.QuestionBankQuestionVO;
@@ -25,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 题目题库关系接口
@@ -72,6 +67,19 @@ public class QuestionBankQuestionController {
         // 返回新写入的数据 id
         long newQuestionBankQuestionId = questionBankQuestion.getId();
         return ResultUtils.success(newQuestionBankQuestionId);
+    }
+
+    @PostMapping("/add/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<BatchResult> batchAddQuestionBankQuestion(
+            @RequestBody QuestionBankQuestionBatchAddRequest questionBankQuestionBatchAddRequest,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQuestionBatchAddRequest == null, ErrorCode.PARAMS_ERROR);
+        User user = userService.getLoginUser(request);
+        Long questionBankId = questionBankQuestionBatchAddRequest.getQuestionBankId();
+        List<Long> questionIds = questionBankQuestionBatchAddRequest.getQuestionIdList();
+        BatchResult reuslt = questionBankQuestionService.batchAddQuestionBankQuestion(questionBankId, questionIds, user);
+        return ResultUtils.success(reuslt);
     }
 
     /**
