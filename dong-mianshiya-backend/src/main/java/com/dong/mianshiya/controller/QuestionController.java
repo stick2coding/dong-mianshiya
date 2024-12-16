@@ -1,5 +1,11 @@
 package com.dong.mianshiya.controller;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.EntryType;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dong.mianshiya.annotation.AuthCheck;
 import com.dong.mianshiya.common.BaseResponse;
@@ -189,11 +195,38 @@ public class QuestionController {
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 300, ErrorCode.PARAMS_ERROR);
-        // 查询数据库
-        Page<Question> questionPage = questionService.page(new Page<>(current, size),
-                questionService.getQueryWrapper(questionQueryRequest));
-        // 获取封装类
-        return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+        // 根据IP 限流
+        String remoteIP = request.getRemoteAddr();
+        // 定义一个try-with-resource语句块
+        Entry entry = null;
+        try {
+            entry = SphU.entry("listQuestionVOByPage", EntryType.IN, 1, remoteIP);
+            // 放行
+            // 查询数据库
+            Page<Question> questionPage = questionService.page(new Page<>(current, size),
+                    questionService.getQueryWrapper(questionQueryRequest));
+            return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+        } catch (Throwable ex) {
+            // 排除非限流熔断导致的异常
+            if (!BlockException.isBlockException(ex)){
+                // 如果是其他业务异常，就记录并返回
+                Tracer.trace(ex);
+                return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统异常");
+            }
+            // 拦截
+            if (ex instanceof DegradeException){
+                // 熔断降级
+                return handleFallback(questionQueryRequest, request, ex);
+            }
+
+            log.warn("listQuestionByPage请求被限流了");
+            return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统压力过大，请耐心等待");
+        } finally {
+            if (entry != null) {
+                // Sphu.entry 和 entry.exit 必须成对出现，且参数必须一致，即上面传递的参数，这里退出时也要传递
+                entry.exit(1, remoteIP);
+            }
+        }
     }
 
     /**
@@ -265,4 +298,10 @@ public class QuestionController {
 
 
     // endregion
+
+    public BaseResponse<Page<QuestionVO>> handleFallback(@RequestBody QuestionQueryRequest questionQueryRequest,
+                                                             HttpServletRequest request, Throwable ex) {
+        // 可以返回本地数据或空数据
+        return ResultUtils.success(null);
+    }
 }

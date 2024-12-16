@@ -112,6 +112,11 @@ spring:
     multipart:
       # 大小限制
       max-file-size: 10MB
+  cloud:
+    sentinel:
+      transport:
+        port: 8719
+        dashboard: localhost:8131
 server:
   address: 0.0.0.0
   port: 8102
@@ -172,10 +177,10 @@ knife4j:
         api-rule-resources:
           - com.dong.mianshiya.controller
 # 热 key 探测
-hotkey:
-  app-name: mianshiya
-  caffeine-size: 10000
-  push-period: 1000
-  etcd-server: http://localhost:2379
+#hotkey:
+#  app-name: mianshiya
+#  caffeine-size: 10000
+#  push-period: 1000
+#  etcd-server: http://localhost:2379
 
 
