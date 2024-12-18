@@ -1,5 +1,6 @@
 package com.dong.mianshiya.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -13,6 +14,7 @@ import com.dong.mianshiya.model.entity.User;
 import com.dong.mianshiya.model.enums.UserRoleEnum;
 import com.dong.mianshiya.model.vo.LoginUserVO;
 import com.dong.mianshiya.model.vo.UserVO;
+import com.dong.mianshiya.satoken.SaDeviceUtils;
 import com.dong.mianshiya.service.UserService;
 import com.dong.mianshiya.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -114,7 +116,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
         // 3. 记录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        // 这里修改使用satoken，先登录并指定设备，然后将用户信息放入session中
+        StpUtil.login(user.getId(), SaDeviceUtils.getDeviceByRequest(request));
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+//        request.getSession().setAttribute(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
     }
 
@@ -127,7 +132,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getLoginUser(HttpServletRequest request) {
         // 先判断是否已登录
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        // 这里改用satoken
+        // 先拿到用户id
+        Object userId = StpUtil.getLoginId();
+        if (userId == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        // 从数据库查询（追求性能的话可以注释，直接走缓存）
+        User currentUser = this.getById((String) userId);
+        System.out.println("database currentUser" + currentUser);
+        if (currentUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+        // 如果用户信息不多，可以直接从session中获取
+//        return (User)StpUtil.getSessionByLoginId(userId).get(USER_LOGIN_STATE);
+        return currentUser;
+    }
+
+    /**
+     * 旧方法
+     * @param request
+     * @return
+     */
+    public User getLoginUserV1(HttpServletRequest request) {
+        // 先判断是否已登录
+        // 这里改用satoken
+        // 先拿到用户id
+        Object userObj = StpUtil.getLoginId();
+        if (userObj == null){
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
+        }
+//        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User currentUser = (User) userObj;
         System.out.println("session currentUser" + currentUser);
         if (currentUser == null || currentUser.getId() == null) {
@@ -151,8 +186,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public User getLoginUserPermitNull(HttpServletRequest request) {
-        // 先判断是否已登录
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        // 先判断是否已登录（改用satoken，更换原有从servlet中获取session的代码）
+        Object userObj = StpUtil.getSession().get(USER_LOGIN_STATE);
+//        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User currentUser = (User) userObj;
         if (currentUser == null || currentUser.getId() == null) {
             return null;
@@ -170,8 +206,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean isAdmin(HttpServletRequest request) {
-        // 仅管理员可查询
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        // 仅管理员可查询（改用satoken，更换原有从servlet中获取session的代码）
+        Object userObj = StpUtil.getSession().get(USER_LOGIN_STATE);
+//        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User user = (User) userObj;
         return isAdmin(user);
     }
@@ -188,12 +225,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean userLogout(HttpServletRequest request) {
-        if (request.getSession().getAttribute(USER_LOGIN_STATE) == null) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "未登录");
-        }
-        // 移除登录态
-        request.getSession().removeAttribute(USER_LOGIN_STATE);
+        //（改用satoken，更换原有从servlet中获取session的代码）
+
+        // 先判断是否登录
+        StpUtil.checkLogin();
+
+        // 再移出
+        StpUtil.logout();
+
         return true;
+
+//        if (request.getSession().getAttribute(USER_LOGIN_STATE) == null) {
+//            throw new BusinessException(ErrorCode.OPERATION_ERROR, "未登录");
+//        }
+//        // 移除登录态
+//        request.getSession().removeAttribute(USER_LOGIN_STATE);
+//        return true;
     }
 
     @Override
