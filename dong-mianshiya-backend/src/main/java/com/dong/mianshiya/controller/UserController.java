@@ -80,6 +80,13 @@ public class UserController {
     /**
      * 用户登录
      *
+     * 我们使用了satoken来实现用户登录鉴权
+     * 实现同端检测
+     * todo 那么如果自己实现同端检测如何做？
+     * 1、登录的时候拿到用户的设备信息，进行判断，如果不冲突就将用户信息页写入session中
+     * 2、下次登录如果冲突。就把上一次的session信息删除，然后重新写入session
+     *
+     *
      * @param userLoginRequest
      * @param request
      * @return

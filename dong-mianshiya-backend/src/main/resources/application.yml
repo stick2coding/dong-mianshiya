@@ -96,7 +96,7 @@ spring:
   # Redis 配置
   # todo 需替换配置，然后取消注释
   redis:
-    database: 1
+    database: 2
     host: 121.5.34.27
     port: 6379
     timeout: 5000
