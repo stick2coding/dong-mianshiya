@@ -32,7 +32,9 @@ public class SentinelRulesManager {
         // 加载规则
         initFlowRules();
         initDegradeRules();
-//        listenRules();
+        // todo 这里应该是从本地文件数据源读取配置文件，但是加上后控制台就显示不出来了，需要排查一下
+        //listenRules();
+        // todo 另外这里可以扩展动态数据源，比如引入nacos
     }
 
     public void initFlowRules() {

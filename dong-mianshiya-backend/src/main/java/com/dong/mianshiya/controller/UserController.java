@@ -50,6 +50,10 @@ public class UserController {
     @Resource
     private WxOpenConfig wxOpenConfig;
 
+
+//    @NacosValue(value = "${test}", autoRefreshed = true)
+    private String nacosTest;
+
     // region 登录相关
 
     /**
@@ -85,6 +89,7 @@ public class UserController {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        System.out.println("测试nacos" + nacosTest);
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
