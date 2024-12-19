@@ -16,6 +16,7 @@ import com.dong.mianshiya.common.ResultUtils;
 import com.dong.mianshiya.constant.UserConstant;
 import com.dong.mianshiya.exception.BusinessException;
 import com.dong.mianshiya.exception.ThrowUtils;
+import com.dong.mianshiya.manager.CrawlerDetectManager;
 import com.dong.mianshiya.model.dto.question.QuestionAddRequest;
 import com.dong.mianshiya.model.dto.question.QuestionEditRequest;
 import com.dong.mianshiya.model.dto.question.QuestionQueryRequest;
@@ -49,6 +50,9 @@ public class QuestionController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private CrawlerDetectManager crawlerDetectManager;
 
     // region 增删改查
 
@@ -136,24 +140,34 @@ public class QuestionController {
 
     /**
      * 根据 id 获取题目（封装类）
+     * 可以使用注解的方式进行爬虫检测
      *
      * @param id
      * @return
      */
     @GetMapping("/get/vo")
+    //@CrawlerDetect
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-
+        // 先登录
+        User loginUser = userService.getLoginUser(request);
+        // 爬虫检测
+        //crawlerDetectManager.crawlerDetect(loginUser.getId());
         // 生成key
         String key = "question_" + id;
-        // 判断是否是热key
-        if (JdHotKeyStore.isHotKey(key)){
-            // 是，就从本地获取
-            Object cacheQuestion = JdHotKeyStore.get(key);
-            if (cacheQuestion != null){
-                return ResultUtils.success((QuestionVO) cacheQuestion);
+        try{
+            // 判断是否是热key
+            if (JdHotKeyStore.isHotKey(key)){
+                // 是，就从本地获取
+                Object cacheQuestion = JdHotKeyStore.get(key);
+                if (cacheQuestion != null){
+                    return ResultUtils.success((QuestionVO) cacheQuestion);
+                }
             }
+        }catch (Exception e){
+            log.error("热key获取失败，key:{}",key,e);
         }
+
         // 如果不是，就从数据库获取
         // 查询数据库
         Question question = questionService.getById(id);
@@ -161,7 +175,11 @@ public class QuestionController {
         // 获取封装类
         QuestionVO questionVO = questionService.getQuestionVO(question, request);
         // 放入本地缓存（这个方法内部会再次判断key是否是热key,当是热key才会放入内存中）
-        JdHotKeyStore.smartSet(key,questionVO);
+        try{
+            JdHotKeyStore.smartSet(key,questionVO);
+        }catch(Exception e){
+            log.error("热key放入失败，key:{}",key,e);
+        }
         return ResultUtils.success(questionVO);
     }
 

@@ -3,7 +3,6 @@ package com.dong.mianshiya.config;
 import com.jd.platform.hotkey.client.ClientStarter;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -34,7 +33,7 @@ public class HotKeyConfig {
     /**
      * 初始化 hotkey
      */
-    @Bean
+    //@Bean
     public void initHotkey() {
         ClientStarter.Builder builder = new ClientStarter.Builder();
         ClientStarter starter = builder.setAppName(appName)
