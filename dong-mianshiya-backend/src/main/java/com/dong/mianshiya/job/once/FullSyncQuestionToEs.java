@@ -8,7 +8,6 @@ import com.dong.mianshiya.service.QuestionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * 这里启动后会先执行一次，但是如果没有配置ES，这里就会出现错误
  */
-@Component
+//@Component
 @Slf4j
 public class FullSyncQuestionToEs implements CommandLineRunner {
 

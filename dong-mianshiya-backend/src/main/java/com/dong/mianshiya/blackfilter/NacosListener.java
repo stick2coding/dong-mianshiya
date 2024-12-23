@@ -6,11 +6,13 @@ import com.alibaba.nacos.api.config.listener.Listener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.Executor;
 
-@Component
+/**
+ * 部署nacos注意开启注解
+ */
+//@Component //
 @Slf4j
 public class NacosListener implements InitializingBean {
 

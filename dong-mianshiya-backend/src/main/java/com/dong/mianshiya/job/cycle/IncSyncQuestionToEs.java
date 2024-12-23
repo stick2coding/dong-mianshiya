@@ -2,18 +2,20 @@ package com.dong.mianshiya.job.cycle;
 
 import com.dong.mianshiya.esdao.QuestionEsDao;
 import com.dong.mianshiya.mapper.QuestionMapper;
-import com.dong.mianshiya.model.entity.Question;
 import com.dong.mianshiya.model.dto.question.QuestionEsDTO;
+import com.dong.mianshiya.model.entity.Question;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component
+/**
+ * 取消注释开启任务
+ */
+//@Component
 @Slf4j
 public class IncSyncQuestionToEs {
 
